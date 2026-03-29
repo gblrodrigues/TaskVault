@@ -1,31 +1,36 @@
 package com.gblrod.taskvault.components
 
-import android.util.Log
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -33,26 +38,46 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.gblrod.taskvault.R
 import com.gblrod.taskvault.ui.theme.ContainerButtonDialog
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AlertDialogNewTask(
+fun BottomSheetNewTask(
     task: String,
     onTaskChange: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onConfirmation: () -> Unit,
-    dialogTitle: String
+    sheetState: SheetState
 ) {
     val maxChar = 32
     val keyboard = LocalSoftwareKeyboardController.current
+    val focusRequester = remember { FocusRequester() }
+    val keyboardController = LocalSoftwareKeyboardController.current
+    val scroll = rememberScrollState()
 
-    AlertDialog(
-        title = {
+    LaunchedEffect(task) {
+        delay(100)
+        focusRequester.requestFocus()
+        keyboardController?.show()
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = Color.DarkGray
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scroll)
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             Text(
-                text = dialogTitle
+                text = "Nova tarefa",
+                style = MaterialTheme.typography.titleMedium
             )
-        },
-        text = {
+
             OutlinedTextField(
                 value = task,
                 onValueChange = {
@@ -98,58 +123,52 @@ fun AlertDialogNewTask(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Clear,
-                                contentDescription = "Ícone de Tarefa",
+                                contentDescription = "Ícone de limpar campo",
                                 tint = Color.Black
                             )
                         }
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
             )
-            Spacer(modifier = Modifier.height(4.dp))
-        },
-        onDismissRequest = {
-            onDismissRequest()
-        },
-        confirmButton = {
-            TextButton(
-                onClick = { onConfirmation() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = ContainerButtonDialog
-                ),
-                shape = RoundedCornerShape(12.dp),
-                enabled = task.isNotBlank()
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)
             ) {
-                Text(
-                    text = "Adicionar",
-                    color = Color.White
-                )
+                OutlinedButton(
+                    onClick = { onDismissRequest() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(
+                        width = 2.dp,
+                        color = ContainerButtonDialog
+                    ),
+                ) {
+                    Text(
+                        text = "Cancelar",
+                        color = ContainerButtonDialog
+                    )
+                }
+
+                OutlinedButton(
+                    onClick = { onConfirmation() },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = ContainerButtonDialog
+                    ),
+                    shape = RoundedCornerShape(12.dp),
+                    enabled = task.isNotBlank()
+                ) {
+                    Text(
+                        text = "Adicionar",
+                        color = Color.White
+                    )
+                }
             }
-        },
-        dismissButton = {
-            TextButton(
-                onClick = { onDismissRequest() },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.Transparent
-                ),
-                shape = RoundedCornerShape(12.dp),
-                border = BorderStroke(
-                    width = 2.dp,
-                    color = ContainerButtonDialog
-                ),
-            ) {
-                Text(
-                    text = "Cancelar",
-                    color = ContainerButtonDialog
-                )
-            }
-        },
-        shape = RoundedCornerShape(12.dp),
-        modifier = Modifier.border(
-            width = 2.dp,
-            color = Color.Gray,
-            shape = RoundedCornerShape(12.dp)
-        )
-    )
+        }
+    }
 }
