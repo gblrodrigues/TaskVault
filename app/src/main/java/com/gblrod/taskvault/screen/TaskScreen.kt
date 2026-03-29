@@ -40,27 +40,25 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gblrod.taskvault.components.AlertDialogDeleteTask
 import com.gblrod.taskvault.components.BottomSheetEditTask
 import com.gblrod.taskvault.components.BottomSheetNewTask
 import com.gblrod.taskvault.components.TaskCard
-import com.gblrod.taskvault.dto.TaskDto
+import com.gblrod.taskvault.model.Task
 import com.gblrod.taskvault.ui.theme.BackgroundColorOne
 import com.gblrod.taskvault.ui.theme.BackgroundColorThree
 import com.gblrod.taskvault.ui.theme.BackgroundColorTwo
-import com.gblrod.taskvault.ui.theme.TaskVaultTheme
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TaskScreen(modifier: Modifier = Modifier) {
     var newTask by remember { mutableStateOf("") }
-    val taskList = remember { mutableStateListOf<TaskDto>() }
+    val taskList = remember { mutableStateListOf<Task>() }
     val focus = LocalFocusManager.current
-    var selectedTask by remember { mutableStateOf<TaskDto?>(null) }
-    var selectedTaskEdit by remember { mutableStateOf<String?>(null) }
+    var selectedTask by remember { mutableStateOf<Task?>(null) }
+    var selectedTaskEdit by remember { mutableStateOf<Task?>(null) }
     var newTaskDialog by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -142,12 +140,15 @@ fun TaskScreen(modifier: Modifier = Modifier) {
                         modifier = Modifier
                             .padding(paddingScaffold)
                     ) {
-                        items(taskList) { task ->
+                        items(
+                            items = taskList,
+                            key = { it.id }
+                        ) { task ->
                             TaskCard(
                                 task = task,
                                 onEditTask = {
                                     newTask = ""
-                                    selectedTaskEdit = task.title
+                                    selectedTaskEdit = task
                                 },
                                 onDeleteTask = {
                                     selectedTask = task
@@ -164,13 +165,18 @@ fun TaskScreen(modifier: Modifier = Modifier) {
                                 newTaskDialog = false
                             },
                             onConfirmation = {
-                                if (taskList.contains(TaskDto(title = newTask))) {
+                                val alreadyExistsActive = taskList.any {
+                                    it.title.equals(newTask, ignoreCase = true) && !it.isCompleted
+                                }
+                                if (alreadyExistsActive) {
                                     Toast.makeText(
                                         context,
                                         "Tarefa $newTask já existente!",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
+                                    val task = Task(title = newTask)
+                                    taskList.add(task)
                                     scope.launch {
                                         val result = snackbarHostState.showSnackbar(
                                             message = "Tarefa $newTask adicionada",
@@ -178,10 +184,9 @@ fun TaskScreen(modifier: Modifier = Modifier) {
                                             actionLabel = "Desfazer"
                                         )
                                         if (result == SnackbarResult.ActionPerformed) {
-                                            taskList.remove(TaskDto(title = newTask))
+                                            taskList.remove(task)
                                         }
                                     }
-                                    taskList.add(TaskDto(title = newTask))
                                     newTaskDialog = false
                                 }
                             },
@@ -197,22 +202,27 @@ fun TaskScreen(modifier: Modifier = Modifier) {
                                 selectedTaskEdit = null
                             },
                             onConfirmation = {
-                                val isSameTask = newTask == taskToEdit
-                                val alreadyTaskExists = taskList.contains(TaskDto(title = newTask))
-                                if (!isSameTask && alreadyTaskExists) {
+                                val alreadyTaskExists = taskList.any {
+                                    it.id != taskToEdit.id && it.title.equals(newTask.trim(),
+                                        ignoreCase = true) && !it.isCompleted
+                                }
+                                if (alreadyTaskExists) {
                                     Toast.makeText(
                                         context,
                                         "Tarefa $newTask já existente!",
                                         Toast.LENGTH_SHORT
                                     ).show()
                                 } else {
-                                    val index = taskList.indexOf(TaskDto(title = taskToEdit))
+                                    val index = taskList.indexOfFirst { it.id == taskToEdit.id }
                                     val oldTitleTask = taskList[index]
-                                    taskList[index] = TaskDto(title = newTask)
+
+                                    taskList[index] = oldTitleTask.copy(
+                                        title = newTask
+                                    )
 
                                     scope.launch {
                                         val result = snackbarHostState.showSnackbar(
-                                            message = "Tarefa $taskToEdit editada",
+                                            message = "Tarefa ${taskToEdit.title} editada",
                                             duration = SnackbarDuration.Short,
                                             actionLabel = "Desfazer"
                                         )
@@ -225,7 +235,7 @@ fun TaskScreen(modifier: Modifier = Modifier) {
                                 }
                             },
                             sheetState = sheetState,
-                            dialogTitle = "Editando tarefa $taskToEdit",
+                            dialogTitle = "Editando tarefa ${taskToEdit.title}",
                         )
                     }
 
@@ -235,18 +245,26 @@ fun TaskScreen(modifier: Modifier = Modifier) {
                                 selectedTask = null
                             },
                             onConfirmation = {
+
+                                val index = taskList.indexOfFirst { it.id == taskToDelete.id }
+                                if (index == -1) return@AlertDialogDeleteTask
+
+                                val removedTask = taskList[index]
+
+                                taskList.removeAt(index)
+
                                 scope.launch {
                                     val result = snackbarHostState.showSnackbar(
-                                        message = "Tarefa ${taskToDelete.title} deletada",
+                                        message = "Tarefa ${removedTask.title} deletada",
                                         duration = SnackbarDuration.Short,
                                         actionLabel = "Desfazer"
                                     )
 
                                     if (result == SnackbarResult.ActionPerformed) {
-                                        taskList.add(taskToDelete)
+                                        taskList.add(index, removedTask)
                                     }
                                 }
-                                taskList.remove(taskToDelete)
+
                                 selectedTask = null
                             },
                             dialogText = "Tem certeza que deseja deletar a tarefa ${taskToDelete.title}?",

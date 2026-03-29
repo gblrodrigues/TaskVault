@@ -27,12 +27,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.gblrod.taskvault.dto.TaskDto
+import com.gblrod.taskvault.model.Task
 import com.gblrod.taskvault.ui.theme.TaskCompletedColor
 
 @Composable
 fun TaskCard(
-    task: TaskDto,
+    task: Task,
     onEditTask: () -> Unit,
     onDeleteTask: () -> Unit
 ) {
